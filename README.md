@@ -123,11 +123,127 @@ worker2   Ready    <none>          24s     v1.25.0
 ```
 
 Tudo lindo!?
-Ainda não.. Dá uma passada no arquivo Post-Configs que ainda temos 2 probleminhas para resolver. Falei que seria fácil, não rápido hehe
+Ainda não.. temos 2 probleminhas para resolver. Falei que seria fácil, não rápido hehe
 
+Ao realizar um:
+```yaml
+kubectl get nodes -o wide
+```
+Seu output provavelmente ficará parecico com o meu:
+```yaml
+vagrant@master:~$ kubectl get nodes -o wide
+NAME      STATUS   ROLES           AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+master    Ready    control-plane   12m     v1.25.0   10.0.2.15     <none>        Ubuntu 20.04.6 LTS   5.4.0-149-generic   containerd://1.6.12
+worker1   Ready    <none>          6m23s   v1.25.0   10.0.2.15     <none>        Ubuntu 20.04.6 LTS   5.4.0-149-generic   containerd://1.6.12
+worker2   Ready    <none>          6m20s   v1.25.0   10.0.2.15     <none>        Ubuntu 20.04.6 LTS   5.4.0-149-generic   containerd://1.6.12
+``` 
+O InternalIP está "Errado", não vamos utilizar o CIDR 10.0.2.15, vamos utilizar os IPs dos próprios nodes.
 
+Digite:
+```yaml
+ip a
+```
+Você pode ver várias interfaces de rede e alguns IPs variados, mas foque no 192.168.x.10 para o Master, 192.168.x.20 para o Worker 1 e 192.168.x.21 para o Worker 2.
 
+## EM TODOS OS NODES
+Agora vamos editar o seguinte arquivo:
+```yaml
+sudo vim /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+``` 
+Abaixo dessas linhas:
+```yaml
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+```
+Vamos adicionar o parametro Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.x.x", vai ficar mais ou menos assim:
+### Master
+```yaml
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.x.10"
+```
+### Worker 1
+```yaml
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.x.20"
+```
+### Worker 2
+```yaml
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.x.21"
+```
+Lembrando que no vim, para inserir texto você aperta a letra [i] e para salvar, você aperta [esc] e digita [wq!] e pode dar [enter].
 
+*PELO AMOR DE DEUS NAO ESQUECE DE TROCAR O X PELO NUMERO QUE VC DEFINIU NO VAGRANTFILE*
+
+## Em todos os nodes:
+Precisamos agora restartar o kubelet em todos os nodes, mas como alteramos um service do Linux, vamos ter que dar um reload no daemon:
+```yaml
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+```
+Após executar em todos, verifique novamente os nodes:
+```yaml
+vagrant@master:~$ kubectl get nodes -o wide
+NAME      STATUS   ROLES           AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+master    Ready    control-plane   22m   v1.25.0   192.168.56.10   <none>        Ubuntu 20.04.6 LTS   5.4.0-149-generic   containerd://1.6.12
+worker1   Ready    <none>          16m   v1.25.0   192.168.56.20   <none>        Ubuntu 20.04.6 LTS   5.4.0-149-generic   containerd://1.6.12
+worker2   Ready    <none>          16m   v1.25.0   192.168.56.21   <none>        Ubuntu 20.04.6 LTS   5.4.0-149-generic   containerd://1.6.12
+
+``` 
+## AGORA SIM!!!
+### Brincadeira, ainda não, falta uma coisinha só
+*Você! Estudante de uma CKA ou CKAD da vida, você pode precisar do comando kubectl top <resource>, que basicamente te retorna o consumo seja dos nodes ou dos pods*
+```yaml
+  vagrant@master:~$ kubectl top nodes
+error: Metrics API not available
+```
+Para arrumar isso:
+```yaml
+  curl -LO https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+E ai vamos editar o componentes.yaml, podemos usar um vim mesmo e vamos buscar em especifico essa parte:
+```yaml
+       spec:
+133       nodeSelector: # Adicione essa linha
+134         kubernetes.io/hostname: master # Adicione essa linha
+135       containers:
+136       - args:
+137         - --cert-dir=/tmp
+138         - --secure-port=4443
+139         - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+140         - --kubelet-use-node-status-port
+141         - --metric-resolution=15s
+142         - --kubelet-insecure-tls # Adicione essa linha
+``` 
+*NOVAMENTE PELO AMOR DE DEUS VERIFIQUE A IDENTAÇÃO, USAR UM [:set nu] NO VIM VAI TE AJUDAR A ACHAR ESSAS LINHAS MAIS FACIL*
+  
+De um apply e aguarde cerca de 2 minutos também:
+```yaml
+kubectl apply -f components.yaml
+``` 
+  
+ Podemos então ver as métricas agora:
+```yaml
+  vagrant@master:~$ kubectl top nodes
+NAME      CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+master    239m         5%     1652Mi          43%       
+worker1   78m          3%     837Mi           44%       
+worker2   71m          3%     824Mi           43%  
+``` 
+
+## Isso é tudo! Eu acho hehe
+Qualquer dúvida, meus contatos estão no meu perfil do GitHub. Abraço e aproveite o Cluster!
 
 
 
