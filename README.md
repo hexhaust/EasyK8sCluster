@@ -10,10 +10,12 @@ https://developer.hashicorp.com/vagrant/downloads
 
 ### MacOS
 https://download.virtualbox.org/virtualbox/7.0.8/VirtualBox-7.0.8-156879-OSX.dmg
+
 https://developer.hashicorp.com/vagrant/downloads
 
 ### Windows
 https://download.virtualbox.org/virtualbox/7.0.8/VirtualBox-7.0.8-156879-Win.exe
+
 https://developer.hashicorp.com/vagrant/downloads
 
 
