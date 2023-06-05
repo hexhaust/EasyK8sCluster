@@ -66,6 +66,8 @@ Execute:
 ```yaml
 sudo kubeadm init --pod-network-cidr 192.168.0.0/16 --kubernetes-version 1.25.0 --apiserver-advertise-address 192.168.56.10
 ```
+*LEMBRE-SE DE ALTERAR O apiserver-advertise-address 192.168.x.10 PARA O CIDR QUE VOCÊ INFORMOU. O FINAL DO IP DO MASTER SEMPRE SERÁ 10, O QUE PODE MUDAR É O NÚMERO APÓS O 168.*
+
 Aguarde alguns minutos, isso vai provisionar o Control Plane inteiro, com certificados e API Server.
 
 Finalizado o kubeadm init, execute então:
