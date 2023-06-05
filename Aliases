@@ -1,0 +1,12 @@
+#Aliases opcionais para deixar sua vida mais fácil no cluster :) 
+# Copie e coloque dentro do bashrc no seu /home/vagrant
+
+#Kubernetes Aliases:
+alias k=kubectl
+alias kr='kubectl run'
+alias kgs='kubectl get service'
+alias kgn='kubectl get nodes'
+alias kgd='kubectl get deployment'
+alias kgds='kubectl get daemonset -A'
+alias kgp='kubectl get pods'
+alias kgpa='kubectl get pods -A'
