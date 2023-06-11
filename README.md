@@ -1,6 +1,8 @@
 # EasyK8sCluster
 Uma jeito facil (mas nao rapido) de criar seu Cluster Kubernetes com kubeadm para estudos e testes
 
+### Em progresso..
+Atualmente estou estudando e testando como configurar o Vagrant sem muitos problemas para rodar com KVM/Libvirt.
 ## Dependencias
 É necessário instalar o VirtualBox e o Vagrant na sua máquina
 ### Linux
